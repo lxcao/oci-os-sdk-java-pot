@@ -18,3 +18,7 @@ java -cp .:$OCI_JAVA_SDK_FULL_JAR_LOCATION:$OCI_JAVA_SDK_LOCATION/third-party/li
 javac -cp .:$OCI_JAVA_SDK_FULL_JAR_LOCATION:$OCI_JAVA_SDK_LOCATION/third-party/lib/* UploadObjectExample.java
 #run UploadObjectExample
 java -cp .:$OCI_JAVA_SDK_FULL_JAR_LOCATION:$OCI_JAVA_SDK_LOCATION/third-party/lib/* UploadObjectExample $(echo "currybeefmovie"$(date +%Y%m%d%H%M)) ./assets/currybeef.mp4
+
+#compile and run in the instnace
+javac -cp ../oci-sdk/oci-java-sdk/2.26.0/lib/oci-java-sdk-full-2.26.0.jar:../oci-sdk/oci-java-sdk/2.26.0/third-party/lib/\* UploadObjectwithInstancePrincipals.java
+java -cp .:../oci-sdk/oci-java-sdk/2.26.0/lib/oci-java-sdk-full-2.26.0.jar:../oci-sdk/oci-java-sdk/2.26.0/third-party/lib/\* UploadObjectwithInstancePrincipals $(echo "currybeefmovie"$(date +%Y%m%d%H%M)) ./assets/currybeef.mp4
