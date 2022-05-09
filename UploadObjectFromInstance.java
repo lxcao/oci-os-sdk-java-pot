@@ -7,6 +7,7 @@ import java.net.ConnectException;
 import java.net.SocketTimeoutException;
 import org.apache.commons.lang3.time.StopWatch;
 import java.util.concurrent.TimeUnit;
+import org.apache.commons.io.FileUtils;
 
 import com.oracle.bmc.ConfigFileReader;
 import com.oracle.bmc.Region;
@@ -91,12 +92,13 @@ public class UploadObjectFromInstance {
         stopWatch.start();
         // upload request and print result
         // if multi-part is used, and any part fails, the entire upload fails and will throw BmcException
-        UploadResponse response = uploadManager.upload(uploadDetails);
-        stopWatch.stop();
-        System.out.println("consume: " + stopWatch.getTime(TimeUnit.MILLISECONDS) + " ms.");
-        System.out.println(response);
+        UploadResponse uploadResponse = uploadManager.upload(uploadDetails);
+        System.out.println("upload consume: " + stopWatch.getTime(TimeUnit.MILLISECONDS) + " ms.");
+        System.out.println(uploadResponse);
+        stopWatch.reset();
+        stopWatch.start();
         // fetch the object just uploaded
-        GetObjectResponse getResponse =
+        GetObjectResponse downloadResponse =
                 client.getObject(
                         GetObjectRequest.builder()
                                 .namespaceName(namespaceName)
@@ -104,12 +106,15 @@ public class UploadObjectFromInstance {
                                 .objectName(objectName)
                                 .build());
 
-        // use the response's function to print the fetched object's metadata
-        System.out.println(getResponse.getOpcMeta());
-
         // stream contents should match the file uploaded
-        try (final InputStream fileStream = getResponse.getInputStream()) {
+        try (final InputStream fileStream = downloadResponse.getInputStream()) {
             // use fileStream
+            File targetFile = new File("/home/opc/workspaces/oci-pot/tmp/"+objectName);
+            FileUtils.copyInputStreamToFile(fileStream, targetFile);
         } // try-with-resources automatically closes fileStream
+        System.out.println("download consume: " + stopWatch.getTime(TimeUnit.MILLISECONDS) + " ms.");
+        // use the response's function to print the fetched object's metadata
+        System.out.println(downloadResponse);
+        stopWatch.stop();
     }
 }
