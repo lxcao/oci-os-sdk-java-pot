@@ -5,6 +5,8 @@ import java.util.Calendar;
 import java.util.Map;
 import java.net.ConnectException;
 import java.net.SocketTimeoutException;
+import org.apache.commons.lang3.time.StopWatch;
+import java.util.concurrent.TimeUnit;
 
 import com.oracle.bmc.ConfigFileReader;
 import com.oracle.bmc.Region;
@@ -46,7 +48,7 @@ public class UploadObjectFromInstance {
         String contentEncoding = null;
         String contentLanguage = null;
         File body = new File(args[0]);
-
+        StopWatch stopWatch = new StopWatch();
 
         final InstancePrincipalsAuthenticationDetailsProvider provider;
         try {
@@ -86,11 +88,13 @@ public class UploadObjectFromInstance {
         UploadRequest uploadDetails =
                 UploadRequest.builder(body).allowOverwrite(true).build(request);
 
+        stopWatch.start();
         // upload request and print result
         // if multi-part is used, and any part fails, the entire upload fails and will throw BmcException
         UploadResponse response = uploadManager.upload(uploadDetails);
+        stopWatch.stop();
+        System.out.println("consume: " + stopWatch.getTime(TimeUnit.MILLISECONDS) + " ms.");
         System.out.println(response);
-
         // fetch the object just uploaded
         GetObjectResponse getResponse =
                 client.getObject(
