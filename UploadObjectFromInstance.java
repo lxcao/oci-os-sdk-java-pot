@@ -5,6 +5,8 @@ import java.util.Calendar;
 import java.util.Map;
 import java.net.ConnectException;
 import java.net.SocketTimeoutException;
+import java.security.SecureRandom;
+
 import org.apache.commons.lang3.time.StopWatch;
 import java.util.concurrent.TimeUnit;
 import org.apache.commons.io.FileUtils;
@@ -33,6 +35,12 @@ public class UploadObjectFromInstance {
                         "Unexpected number of arguments received. Object Location are required.");
             }
 
+        final String ORGIN_STR = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+        StringBuilder builder = new StringBuilder();
+        SecureRandom secureRandom = new SecureRandom();
+        for(int i = 0; i < 12; i++) {
+            builder.append(ORGIN_STR.charAt(secureRandom.nextInt(ORGIN_STR.length())));
+        }
         SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyyMMdd"); 
         SimpleDateFormat timeFormatter = new SimpleDateFormat("HHmmss"); 
         Calendar cal = Calendar.getInstance();
@@ -42,7 +50,7 @@ public class UploadObjectFromInstance {
         String bucketName = "oci.ezviz.singapore";
         System.out.println("Bucket: " + bucketName);
         String objectNamePrefix = "camera/001/";
-        String objectName = objectNamePrefix + dateFormatter.format(cal.getTime()) + "/" + timeFormatter.format(cal.getTime());
+        String objectName = objectNamePrefix + dateFormatter.format(cal.getTime()) + "/" + timeFormatter.format(cal.getTime()) + "-" + builder.toString();
         System.out.println("Object: " + objectName);
         Map<String, String> metadata = null;
         String contentType = null;
