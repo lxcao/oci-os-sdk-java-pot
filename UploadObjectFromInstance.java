@@ -25,6 +25,7 @@ import com.oracle.bmc.objectstorage.transfer.UploadManager;
 import com.oracle.bmc.objectstorage.transfer.UploadManager.UploadRequest;
 import com.oracle.bmc.objectstorage.transfer.UploadManager.UploadResponse;
 import com.oracle.bmc.auth.InstancePrincipalsAuthenticationDetailsProvider;
+import com.oracle.bmc.util.StreamUtils;
 
 public class UploadObjectFromInstance {
     
@@ -56,7 +57,9 @@ public class UploadObjectFromInstance {
         String contentType = null;
         String contentEncoding = null;
         String contentLanguage = null;
-        File body = new File(args[0]);
+        File bodyFile = new File(args[0]);
+        //test stream performace, almost same
+        //InputStream bodyStream = StreamUtils.toInputStream(bodyFile);
         StopWatch stopWatch = new StopWatch();
 
         final InstancePrincipalsAuthenticationDetailsProvider provider;
@@ -94,8 +97,11 @@ public class UploadObjectFromInstance {
                         .opcMeta(metadata)
                         .build();
 
-        UploadRequest uploadDetails =
-                UploadRequest.builder(body).allowOverwrite(true).build(request);
+        UploadRequest uploadDetails = UploadRequest.builder(bodyFile).allowOverwrite(true).build(request);
+
+        // upload using stream, almost same performance
+        //UploadRequest uploadDetails = UploadRequest.builder(bodyStream,bodyFile.length()).allowOverwrite(true).build(request);
+        //StreamUtils.closeQuietly(bodyStream);
 
         stopWatch.start();
         // upload request and print result
@@ -119,6 +125,7 @@ public class UploadObjectFromInstance {
             // use fileStream
             File targetFile = new File("/home/opc/workspaces/oci-pot/tmp/"+objectName);
             FileUtils.copyInputStreamToFile(fileStream, targetFile);
+            fileStream.close();
         } // try-with-resources automatically closes fileStream
         System.out.println("download consume: " + stopWatch.getTime(TimeUnit.MILLISECONDS) + " ms.");
         // use the response's function to print the fetched object's metadata
