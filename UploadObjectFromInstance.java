@@ -46,46 +46,63 @@ public class UploadObjectFromInstance {
         System.out.println("Bucket: " + bucketName);
         String objectNamePrefix = "camera/001/";
 
-        File bodyFile = new File("./assets/currybeef.mp4");
 
-        //OCI Instance Principal 
-        final InstancePrincipalsAuthenticationDetailsProvider provider;
-        try {
-            provider = InstancePrincipalsAuthenticationDetailsProvider.builder().build();
-        } catch (Exception e) {
-            if (e.getCause() instanceof SocketTimeoutException
-                    || e.getCause() instanceof ConnectException) {
-                System.out.println(
-                        "This sample only works when running on an OCI instance. Are you sure you are running on an OCI instance? For more info see: https://docs.cloud.oracle.com/Content/Identity/Tasks/callingservicesfrominstances.htm");
-                return;
-            }
-            throw e;
-        }
-        //OCI Object Storage
-        ObjectStorage client = new ObjectStorageClient(provider);
-        client.setRegion(Region.AP_SINGAPORE_1);
-        // configure upload settings as desired
-        UploadConfiguration uploadConfiguration =
-                UploadConfiguration.builder()
+                //OCI Instance Principal 
+                final InstancePrincipalsAuthenticationDetailsProvider provider;
+                try {
+                    provider = InstancePrincipalsAuthenticationDetailsProvider.builder().build();
+                } catch (Exception e) {
+                    if (e.getCause() instanceof SocketTimeoutException
+                            || e.getCause() instanceof ConnectException) {
+                        System.out.println(
+                                "This sample only works when running on an OCI instance. Are you sure you are running on an OCI instance? For more info see: https://docs.cloud.oracle.com/Content/Identity/Tasks/callingservicesfrominstances.htm");
+                        return;
+                    }
+                    throw e;
+                }
+
+                //OCI Object Storage
+                ObjectStorage client = new ObjectStorageClient(provider);
+                    client.setRegion(Region.AP_SINGAPORE_1);
+                // configure upload settings as desired
+                UploadConfiguration uploadConfiguration =
+                    UploadConfiguration.builder()
                         .allowMultipartUploads(true)
                         .allowParallelUploads(true)
                         .build();
 
-        ExecutorService fixedPool = Executors.newFixedThreadPool(1);
+        ExecutorService fixedPool = Executors.newFixedThreadPool(50);
 
-        fixedPool.submit(new Runnable() {
-            @Override
-            public void run() {
-                uploadObject(client, uploadConfiguration, objectNamePrefix, bucketName, namespaceName, bodyFile);
-            }
-        });
+        StopWatch stopWatchTotal = new StopWatch();
+        stopWatchTotal.start();
+        //multi file prepare
+        //File sourceFile = new File("./assets/currybeef.mp4");
+        for(int i = 0; i < 50; i++){
+            //multi file prepare
+            // File destinationFile = new File("./assets/currybeef-"+i+".mp4");
+            // FileUtils.copyFile(sourceFile, destinationFile);
+            File bodyFile = new File("./assets/currybeef-"+i+".mp4");
+            // try inputstream
+            // InputStream bodyStream = StreamUtils.toInputStream(bodyFile);
+            // Long bodyStreamLength = bodyFile.length();
+            fixedPool.submit(new Runnable() {
+                @Override
+                public void run() {
+                    uploadObject(client, uploadConfiguration, objectNamePrefix, bucketName, namespaceName, bodyFile/*bodyStream, bodyStreamLength*/);
+                }
+            });
+            System.out.println(i + " sumitted");
+         };
+        fixedPool.shutdown();
+        fixedPool.awaitTermination(60, TimeUnit.SECONDS);
+        System.out.println("Total upload consume: " + stopWatchTotal.getTime(TimeUnit.MILLISECONDS) + " ms.");
+        stopWatchTotal.stop();
 
-        // for(int i = 0; i < 160; i++){
-        //     uploadObject(objectNamePrefix, bucketName, namespaceName, bodyFile);
-        // };
     }
 
-    private static void uploadObject(ObjectStorage client, UploadConfiguration uploadConfiguration, String objectNamePrefix, String bucketName, String namespaceName, File bodyFile) {
+    private static void uploadObject(ObjectStorage client, UploadConfiguration uploadConfiguration, String objectNamePrefix, String bucketName, String namespaceName, File bodyFile/*InputStream bodyStream, Long bodyStreamLength*/) {
+        
+        
         SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyyMMdd"); 
         SimpleDateFormat timeFormatter = new SimpleDateFormat("HHmmss"); 
 
@@ -94,7 +111,7 @@ public class UploadObjectFromInstance {
         SecureRandom secureRandom = new SecureRandom();
 
         Calendar cal = Calendar.getInstance();
-        System.out.println("The original Date: " + cal);
+        //System.out.println("The original Date: " + cal);
 
         for(int j = 0; j < 12; j++) {
             stringBuilder.append(ORGIN_STR.charAt(secureRandom.nextInt(ORGIN_STR.length())));
@@ -107,8 +124,6 @@ public class UploadObjectFromInstance {
         String contentEncoding = null;
         String contentLanguage = null;
 
-       //test stream performace, almost same
-        //InputStream bodyStream = StreamUtils.toInputStream(bodyFile);
         StopWatch stopWatch = new StopWatch();
 
         UploadManager uploadManager = new UploadManager(client, uploadConfiguration);
@@ -125,17 +140,17 @@ public class UploadObjectFromInstance {
                         .build();
 
         UploadRequest uploadDetails = UploadRequest.builder(bodyFile).allowOverwrite(true).build(request);
-
-        // upload using stream, almost same performance
-        //UploadRequest uploadDetails = UploadRequest.builder(bodyStream,bodyFile.length()).allowOverwrite(true).build(request);
-        //StreamUtils.closeQuietly(bodyStream);
+        //UploadRequest uploadDetails = UploadRequest.builder(bodyStream,bodyStreamLength).allowOverwrite(true).build(request);
+        
 
         stopWatch.start();
         // upload request and print result
         // if multi-part is used, and any part fails, the entire upload fails and will throw BmcException
         UploadResponse uploadResponse = uploadManager.upload(uploadDetails);
         System.out.println("upload consume: " + stopWatch.getTime(TimeUnit.MILLISECONDS) + " ms.");
-        System.out.println(uploadResponse);
+        System.out.println(Thread.currentThread().getName() + " : etag : " + uploadResponse.getETag());
+        //StreamUtils.closeQuietly(bodyStream);
+
 
         //download object
         // stopWatch.reset();
