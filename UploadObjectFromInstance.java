@@ -71,17 +71,18 @@ public class UploadObjectFromInstance {
                         .allowParallelUploads(true)
                         .build();
 
-        ExecutorService fixedPool = Executors.newFixedThreadPool(50);
+        ExecutorService fixedPool = Executors.newFixedThreadPool(1);
 
         StopWatch stopWatchTotal = new StopWatch();
         stopWatchTotal.start();
         //multi file prepare
         //File sourceFile = new File("./assets/currybeef.mp4");
-        for(int i = 0; i < 50; i++){
+        for(int i = 0; i < 1; i++){
             //multi file prepare
             // File destinationFile = new File("./assets/currybeef-"+i+".mp4");
             // FileUtils.copyFile(sourceFile, destinationFile);
-            File bodyFile = new File("./assets/currybeef-"+i+".mp4");
+            //File bodyFile = new File("./assets/currybeef-"+i+".mp4");
+            File bodyFile = new File("./assets/currybeef24M.mp4");
             // try inputstream
             // InputStream bodyStream = StreamUtils.toInputStream(bodyFile);
             // Long bodyStreamLength = bodyFile.length();
