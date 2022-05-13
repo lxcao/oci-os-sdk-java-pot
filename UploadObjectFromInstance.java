@@ -5,6 +5,7 @@ import java.util.Calendar;
 import java.util.Map;
 import java.net.ConnectException;
 import java.net.SocketTimeoutException;
+import java.nio.charset.Charset;
 import java.security.SecureRandom;
 
 import org.apache.commons.lang3.time.StopWatch;
@@ -53,9 +54,8 @@ public class UploadObjectFromInstance {
         final String ORGIN_STR = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
         SecureRandom secureRandom = new SecureRandom();
 
-        //Catch cal
+        // Catch cal
         Calendar cal = Calendar.getInstance();
-        // System.out.println("The original Date: " + cal);
 
         // OCI Instance Principal provider
         final InstancePrincipalsAuthenticationDetailsProvider provider;
@@ -75,7 +75,7 @@ public class UploadObjectFromInstance {
         ObjectStorage client = new ObjectStorageClient(provider);
         client.setRegion(Region.AP_SINGAPORE_1);
 
-        //file size is only 780KB, no need multipart
+        // file size is only 780KB, no need multipart
         UploadConfiguration uploadConfiguration = UploadConfiguration.builder()
                 .allowMultipartUploads(false)
                 .allowParallelUploads(true)
@@ -83,15 +83,23 @@ public class UploadObjectFromInstance {
 
         UploadManager uploadManager = new UploadManager(client, uploadConfiguration);
 
-        //Create thread pool
-        ExecutorService fixedPool = Executors.newFixedThreadPool(10);
+        // create log file and upload to object storage
+        String logRecord = dateFormatter.format(cal.getTime()) + "-" + timeFormatter.format(cal.getTime());
+        File logFile = new File("./logs/" + logRecord + ".log");
+        FileUtils.writeStringToFile(logFile, cal.toString(), Charset.defaultCharset());
+        String logName = objectNamePrefix + "log/" + logRecord;
+        UploadRequest uploadLogDetails = createUploadRequest(bucketName, namespaceName, logName, logFile);
+        uploadObject(uploadManager, uploadLogDetails);
+
+        // Create thread pool
+        ExecutorService fixedPool = Executors.newFixedThreadPool(100);
 
         StopWatch stopWatchTotal = new StopWatch();
         stopWatchTotal.start();
         // multi file prepare
         // File sourceFile = new File("./assets/currybeef.mp4");
 
-        //batch for 160 files
+        // batch for 160 files
         for (int i = 0; i < 160; i++) {
             // multi file prepare
             // File destinationFile = new File("./assets/currybeef-"+i+".mp4");
@@ -105,38 +113,44 @@ public class UploadObjectFromInstance {
             // InputStream bodyStream = StreamUtils.toInputStream(bodyFile);
             // Long bodyStreamLength = bodyFile.length();
 
-            //create random string which length is 12
+            // create random string which length is 12
             StringBuilder stringBuilder = new StringBuilder();
             for (int j = 0; j < 12; j++) {
                 stringBuilder.append(ORGIN_STR.charAt(secureRandom.nextInt(ORGIN_STR.length())));
             }
 
-            //set object properties
+            // set object properties
             String objectName = objectNamePrefix + dateFormatter.format(cal.getTime()) + "/"
                     + timeFormatter.format(cal.getTime()) + "-" + stringBuilder.toString();
-            //System.out.println("Object: " + objectName);
-            Map<String, String> metadata = null;
-            String contentType = null;
-            String contentEncoding = null;
-            String contentLanguage = null;
+            // System.out.println("Object: " + objectName);
 
-            //create request
-            PutObjectRequest request = PutObjectRequest.builder()
-                    .bucketName(bucketName)
-                    .namespaceName(namespaceName)
-                    .objectName(objectName)
-                    .contentType(contentType)
-                    .contentLanguage(contentLanguage)
-                    .contentEncoding(contentEncoding)
-                    .opcMeta(metadata)
-                    .build();
+            UploadRequest uploadDetails = createUploadRequest(bucketName, namespaceName, objectName, bodyFile);
 
-            //create uploadRequest
-            UploadRequest uploadDetails = UploadRequest.builder(bodyFile).allowOverwrite(true).build(request);
-            //test stream method
-            // UploadRequest uploadDetails = UploadRequest.builder(bodyStream,bodyStreamLength).allowOverwrite(true).build(request);
+            // Map<String, String> metadata = null;
+            // String contentType = null;
+            // String contentEncoding = null;
+            // String contentLanguage = null;
 
-            //launch thread
+            // // create request
+            // PutObjectRequest request = PutObjectRequest.builder()
+            // .bucketName(bucketName)
+            // .namespaceName(namespaceName)
+            // .objectName(objectName)
+            // .contentType(contentType)
+            // .contentLanguage(contentLanguage)
+            // .contentEncoding(contentEncoding)
+            // .opcMeta(metadata)
+            // .build();
+
+            // // create uploadRequest
+            // UploadRequest uploadDetails =
+            // UploadRequest.builder(bodyFile).allowOverwrite(true).build(request);
+            // // test stream method
+            // // UploadRequest uploadDetails =
+            // //
+            // UploadRequest.builder(bodyStream,bodyStreamLength).allowOverwrite(true).build(request);
+
+            // launch thread
             fixedPool.submit(new Runnable() {
                 @Override
                 public void run() {
@@ -144,9 +158,10 @@ public class UploadObjectFromInstance {
                 }
             });
             System.out.println(i + " sumitted");
-        };
+        }
+        ;
 
-        //close thread pool
+        // close thread pool
         fixedPool.shutdown();
         fixedPool.awaitTermination(60, TimeUnit.SECONDS);
         System.out.println("Total upload consume: " + stopWatchTotal.getTime(TimeUnit.MILLISECONDS) + " ms.");
@@ -166,6 +181,33 @@ public class UploadObjectFromInstance {
         System.out.println(Thread.currentThread().getName() + " : etag : " + uploadResponse.getETag());
 
         stopWatch.stop();
+    }
+
+    // method to create the UploadRequest
+    private static UploadRequest createUploadRequest(String bucketName, String namespaceName, String objectName,
+            File bodyFile) {
+        Map<String, String> metadata = null;
+        String contentType = null;
+        String contentEncoding = null;
+        String contentLanguage = null;
+
+        // create request
+        PutObjectRequest request = PutObjectRequest.builder()
+                .bucketName(bucketName)
+                .namespaceName(namespaceName)
+                .objectName(objectName)
+                .contentType(contentType)
+                .contentLanguage(contentLanguage)
+                .contentEncoding(contentEncoding)
+                .opcMeta(metadata)
+                .build();
+
+        // create uploadRequest
+        UploadRequest uploadDetails = UploadRequest.builder(bodyFile).allowOverwrite(true).build(request);
+        // test stream method
+        // UploadRequest uploadDetails =
+        // UploadRequest.builder(bodyStream,bodyStreamLength).allowOverwrite(true).build(request);
+        return uploadDetails;
     }
 
 }
