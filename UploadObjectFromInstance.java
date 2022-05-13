@@ -31,69 +31,122 @@ import com.oracle.bmc.auth.InstancePrincipalsAuthenticationDetailsProvider;
 import com.oracle.bmc.util.StreamUtils;
 
 public class UploadObjectFromInstance {
-    
+
     public static void main(String[] args) throws Exception {
 
+        // fixed file and location for testing
         // if (args.length != 1) {
-        //         throw new IllegalArgumentException(
-        //                 "Unexpected number of arguments received. Object Location are required.");
-        //     }
+        // throw new IllegalArgumentException(
+        // "Unexpected number of arguments received. Object Location are required.");
+        // }
 
-        //static paramaters
+        // static paramaters
         String namespaceName = "ocichina001";
         System.out.println("Namespace: " + namespaceName);
         String bucketName = "oci.ezviz.singapore";
         System.out.println("Bucket: " + bucketName);
         String objectNamePrefix = "camera/001/";
 
+        SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyyMMdd");
+        SimpleDateFormat timeFormatter = new SimpleDateFormat("HHmmss");
 
-                //OCI Instance Principal 
-                final InstancePrincipalsAuthenticationDetailsProvider provider;
-                try {
-                    provider = InstancePrincipalsAuthenticationDetailsProvider.builder().build();
-                } catch (Exception e) {
-                    if (e.getCause() instanceof SocketTimeoutException
-                            || e.getCause() instanceof ConnectException) {
-                        System.out.println(
-                                "This sample only works when running on an OCI instance. Are you sure you are running on an OCI instance? For more info see: https://docs.cloud.oracle.com/Content/Identity/Tasks/callingservicesfrominstances.htm");
-                        return;
-                    }
-                    throw e;
-                }
+        final String ORGIN_STR = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+        SecureRandom secureRandom = new SecureRandom();
 
-                //OCI Object Storage
-                ObjectStorage client = new ObjectStorageClient(provider);
-                    client.setRegion(Region.AP_SINGAPORE_1);
-                // configure upload settings as desired
-                UploadConfiguration uploadConfiguration =
-                    UploadConfiguration.builder()
-                        .allowMultipartUploads(true)
-                        .allowParallelUploads(true)
-                        .build();
+        //Catch cal
+        Calendar cal = Calendar.getInstance();
+        // System.out.println("The original Date: " + cal);
 
-        ExecutorService fixedPool = Executors.newFixedThreadPool(1);
+        // OCI Instance Principal provider
+        final InstancePrincipalsAuthenticationDetailsProvider provider;
+        try {
+            provider = InstancePrincipalsAuthenticationDetailsProvider.builder().build();
+        } catch (Exception e) {
+            if (e.getCause() instanceof SocketTimeoutException
+                    || e.getCause() instanceof ConnectException) {
+                System.out.println(
+                        "This sample only works when running on an OCI instance. Are you sure you are running on an OCI instance? For more info see: https://docs.cloud.oracle.com/Content/Identity/Tasks/callingservicesfrominstances.htm");
+                return;
+            }
+            throw e;
+        }
+
+        // Set client, configuration and upload manager
+        ObjectStorage client = new ObjectStorageClient(provider);
+        client.setRegion(Region.AP_SINGAPORE_1);
+
+        //file size is only 780KB, no need multipart
+        UploadConfiguration uploadConfiguration = UploadConfiguration.builder()
+                .allowMultipartUploads(false)
+                .allowParallelUploads(true)
+                .build();
+
+        UploadManager uploadManager = new UploadManager(client, uploadConfiguration);
+
+        //Create thread pool
+        ExecutorService fixedPool = Executors.newFixedThreadPool(10);
 
         StopWatch stopWatchTotal = new StopWatch();
         stopWatchTotal.start();
-        //multi file prepare
-        //File sourceFile = new File("./assets/currybeef.mp4");
-        for(int i = 0; i < 1; i++){
-            //multi file prepare
+        // multi file prepare
+        // File sourceFile = new File("./assets/currybeef.mp4");
+
+        //batch for 160 files
+        for (int i = 0; i < 160; i++) {
+            // multi file prepare
             // File destinationFile = new File("./assets/currybeef-"+i+".mp4");
             // FileUtils.copyFile(sourceFile, destinationFile);
-            //File bodyFile = new File("./assets/currybeef-"+i+".mp4");
-            File bodyFile = new File("./assets/currybeef24M.mp4");
+
+            File bodyFile = new File("./assets/currybeef-" + i + ".mp4");
+
+            // try one large file
+            // File bodyFile = new File("./assets/currybeef24M.mp4");
             // try inputstream
             // InputStream bodyStream = StreamUtils.toInputStream(bodyFile);
             // Long bodyStreamLength = bodyFile.length();
+
+            //create random string which length is 12
+            StringBuilder stringBuilder = new StringBuilder();
+            for (int j = 0; j < 12; j++) {
+                stringBuilder.append(ORGIN_STR.charAt(secureRandom.nextInt(ORGIN_STR.length())));
+            }
+
+            //set object properties
+            String objectName = objectNamePrefix + dateFormatter.format(cal.getTime()) + "/"
+                    + timeFormatter.format(cal.getTime()) + "-" + stringBuilder.toString();
+            //System.out.println("Object: " + objectName);
+            Map<String, String> metadata = null;
+            String contentType = null;
+            String contentEncoding = null;
+            String contentLanguage = null;
+
+            //create request
+            PutObjectRequest request = PutObjectRequest.builder()
+                    .bucketName(bucketName)
+                    .namespaceName(namespaceName)
+                    .objectName(objectName)
+                    .contentType(contentType)
+                    .contentLanguage(contentLanguage)
+                    .contentEncoding(contentEncoding)
+                    .opcMeta(metadata)
+                    .build();
+
+            //create uploadRequest
+            UploadRequest uploadDetails = UploadRequest.builder(bodyFile).allowOverwrite(true).build(request);
+            //test stream method
+            // UploadRequest uploadDetails = UploadRequest.builder(bodyStream,bodyStreamLength).allowOverwrite(true).build(request);
+
+            //launch thread
             fixedPool.submit(new Runnable() {
                 @Override
                 public void run() {
-                    uploadObject(client, uploadConfiguration, objectNamePrefix, bucketName, namespaceName, bodyFile/*bodyStream, bodyStreamLength*/);
+                    uploadObject(uploadManager, uploadDetails);
                 }
             });
             System.out.println(i + " sumitted");
-         };
+        };
+
+        //close thread pool
         fixedPool.shutdown();
         fixedPool.awaitTermination(60, TimeUnit.SECONDS);
         System.out.println("Total upload consume: " + stopWatchTotal.getTime(TimeUnit.MILLISECONDS) + " ms.");
@@ -101,83 +154,18 @@ public class UploadObjectFromInstance {
 
     }
 
-    private static void uploadObject(ObjectStorage client, UploadConfiguration uploadConfiguration, String objectNamePrefix, String bucketName, String namespaceName, File bodyFile/*InputStream bodyStream, Long bodyStreamLength*/) {
-        
-        
-        SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyyMMdd"); 
-        SimpleDateFormat timeFormatter = new SimpleDateFormat("HHmmss"); 
-
-        final String ORGIN_STR = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-        StringBuilder stringBuilder = new StringBuilder();
-        SecureRandom secureRandom = new SecureRandom();
-
-        Calendar cal = Calendar.getInstance();
-        //System.out.println("The original Date: " + cal);
-
-        for(int j = 0; j < 12; j++) {
-            stringBuilder.append(ORGIN_STR.charAt(secureRandom.nextInt(ORGIN_STR.length())));
-        }
-
-        String objectName = objectNamePrefix + dateFormatter.format(cal.getTime()) + "/" + timeFormatter.format(cal.getTime()) + "-" + stringBuilder.toString();
-        System.out.println("Object: " + objectName);
-        Map<String, String> metadata = null;
-        String contentType = null;
-        String contentEncoding = null;
-        String contentLanguage = null;
+    // method to invoke upload object
+    private static void uploadObject(UploadManager uploadManager, UploadRequest uploadDetails) {
 
         StopWatch stopWatch = new StopWatch();
 
-        UploadManager uploadManager = new UploadManager(client, uploadConfiguration);
-
-        PutObjectRequest request =
-                PutObjectRequest.builder()
-                        .bucketName(bucketName)
-                        .namespaceName(namespaceName)
-                        .objectName(objectName)
-                        .contentType(contentType)
-                        .contentLanguage(contentLanguage)
-                        .contentEncoding(contentEncoding)
-                        .opcMeta(metadata)
-                        .build();
-
-        UploadRequest uploadDetails = UploadRequest.builder(bodyFile).allowOverwrite(true).build(request);
-        //UploadRequest uploadDetails = UploadRequest.builder(bodyStream,bodyStreamLength).allowOverwrite(true).build(request);
-        
-
         stopWatch.start();
         // upload request and print result
-        // if multi-part is used, and any part fails, the entire upload fails and will throw BmcException
         UploadResponse uploadResponse = uploadManager.upload(uploadDetails);
         System.out.println("upload consume: " + stopWatch.getTime(TimeUnit.MILLISECONDS) + " ms.");
         System.out.println(Thread.currentThread().getName() + " : etag : " + uploadResponse.getETag());
-        //StreamUtils.closeQuietly(bodyStream);
 
-
-        //download object
-        // stopWatch.reset();
-        // stopWatch.start();
-        // // fetch the object just uploaded
-        // GetObjectResponse downloadResponse =
-        //         client.getObject(
-        //                 GetObjectRequest.builder()
-        //                         .namespaceName(namespaceName)
-        //                         .bucketName(bucketName)
-        //                         .objectName(objectName)
-        //                         .build());
-
-        // // stream contents should match the file uploaded
-        // try (final InputStream fileStream = downloadResponse.getInputStream()) {
-        //     // use fileStream
-        //     File targetFile = new File("/home/opc/workspaces/oci-pot/tmp/"+objectName);
-        //     FileUtils.copyInputStreamToFile(fileStream, targetFile);
-        //     fileStream.close();
-        // } // try-with-resources automatically closes fileStream
-        // System.out.println("download consume: " + stopWatch.getTime(TimeUnit.MILLISECONDS) + " ms.");
-        // // use the response's function to print the fetched object's metadata
-        // System.out.println(downloadResponse);
         stopWatch.stop();
     }
-
- 
 
 }
