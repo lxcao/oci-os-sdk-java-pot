@@ -107,6 +107,7 @@ public class UploadObjectFromInstance {
         // multi file prepare
         // File sourceFile = new File("./assets/currybeef.mp4");
 
+        //static list
         List<Future<Long>> cTimeList = Collections.synchronizedList(new ArrayList<Future<Long>>());
 
         // batch for 160 files
@@ -143,16 +144,15 @@ public class UploadObjectFromInstance {
             // uploadObject(uploadManager, uploadDetails);
             // }
             // });
+
             // launch thread with consume time
             Callable<Long> callableTask = () -> {
                 return uploadObject(uploadManager, uploadDetails);
             };
             Future<Long> cTime = fixedPool.submit(callableTask);
-            // Future<Long> cTime = fixedPool.submit(uploadObject(uploadManager,
-            // uploadDetails));
 
             System.out.println(i + " sumitted");
-
+            //add consume time into list
             cTimeList.add(cTime);
         }
         ;
@@ -163,6 +163,7 @@ public class UploadObjectFromInstance {
         System.out.println("Total upload consume: " + stopWatchTotal.getTime(TimeUnit.MILLISECONDS) + " ms.");
         stopWatchTotal.stop();
 
+        //statistics
         List<Long> cTimeListLong = cTimeList.stream().map(x -> {
             try {
                 return x.get();
