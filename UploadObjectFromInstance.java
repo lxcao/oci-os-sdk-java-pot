@@ -1,7 +1,11 @@
 import java.io.File;
 import java.io.InputStream;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
+import java.util.List;
+import java.util.LongSummaryStatistics;
 import java.util.Map;
 import java.net.ConnectException;
 import java.net.SocketTimeoutException;
@@ -10,9 +14,13 @@ import java.security.SecureRandom;
 
 import org.apache.commons.lang3.time.StopWatch;
 
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+
 import org.apache.commons.io.FileUtils;
 
 import com.oracle.bmc.ConfigFileReader;
@@ -99,6 +107,8 @@ public class UploadObjectFromInstance {
         // multi file prepare
         // File sourceFile = new File("./assets/currybeef.mp4");
 
+        List<Future<Long>> cTimeList = Collections.synchronizedList(new ArrayList<Future<Long>>());
+
         // batch for 160 files
         for (int i = 0; i < 160; i++) {
             // multi file prepare
@@ -126,38 +136,24 @@ public class UploadObjectFromInstance {
 
             UploadRequest uploadDetails = createUploadRequest(bucketName, namespaceName, objectName, bodyFile);
 
-            // Map<String, String> metadata = null;
-            // String contentType = null;
-            // String contentEncoding = null;
-            // String contentLanguage = null;
+            // launch thread without future return
+            // fixedPool.submit(new Runnable() {
+            // @Override
+            // public void run() {
+            // uploadObject(uploadManager, uploadDetails);
+            // }
+            // });
+            // launch thread with consume time
+            Callable<Long> callableTask = () -> {
+                return uploadObject(uploadManager, uploadDetails);
+            };
+            Future<Long> cTime = fixedPool.submit(callableTask);
+            // Future<Long> cTime = fixedPool.submit(uploadObject(uploadManager,
+            // uploadDetails));
 
-            // // create request
-            // PutObjectRequest request = PutObjectRequest.builder()
-            // .bucketName(bucketName)
-            // .namespaceName(namespaceName)
-            // .objectName(objectName)
-            // .contentType(contentType)
-            // .contentLanguage(contentLanguage)
-            // .contentEncoding(contentEncoding)
-            // .opcMeta(metadata)
-            // .build();
-
-            // // create uploadRequest
-            // UploadRequest uploadDetails =
-            // UploadRequest.builder(bodyFile).allowOverwrite(true).build(request);
-            // // test stream method
-            // // UploadRequest uploadDetails =
-            // //
-            // UploadRequest.builder(bodyStream,bodyStreamLength).allowOverwrite(true).build(request);
-
-            // launch thread
-            fixedPool.submit(new Runnable() {
-                @Override
-                public void run() {
-                    uploadObject(uploadManager, uploadDetails);
-                }
-            });
             System.out.println(i + " sumitted");
+
+            cTimeList.add(cTime);
         }
         ;
 
@@ -167,20 +163,36 @@ public class UploadObjectFromInstance {
         System.out.println("Total upload consume: " + stopWatchTotal.getTime(TimeUnit.MILLISECONDS) + " ms.");
         stopWatchTotal.stop();
 
+        List<Long> cTimeListLong = cTimeList.stream().map(x -> {
+            try {
+                return x.get();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }).collect(Collectors.toList());
+        LongSummaryStatistics stats = cTimeListLong.stream().mapToLong(x -> x).summaryStatistics();
+        System.out.println("number of object uploaded: " + stats.getCount());
+        System.out.println("Average consume time: " + stats.getAverage());
+        System.out.println("Max consume time: " + stats.getMax());
+        System.out.println("Min consume time: " + stats.getMin());
+
     }
 
     // method to invoke upload object
-    private static void uploadObject(UploadManager uploadManager, UploadRequest uploadDetails) {
+    private static Long uploadObject(UploadManager uploadManager, UploadRequest uploadDetails) {
 
         StopWatch stopWatch = new StopWatch();
 
         stopWatch.start();
         // upload request and print result
         UploadResponse uploadResponse = uploadManager.upload(uploadDetails);
-        System.out.println("upload consume: " + stopWatch.getTime(TimeUnit.MILLISECONDS) + " ms.");
+        Long consumeTime = stopWatch.getTime(TimeUnit.MILLISECONDS);
+        System.out.println("upload consume: " + consumeTime + " ms.");
         System.out.println(Thread.currentThread().getName() + " : etag : " + uploadResponse.getETag());
 
         stopWatch.stop();
+
+        return consumeTime;
     }
 
     // method to create the UploadRequest
