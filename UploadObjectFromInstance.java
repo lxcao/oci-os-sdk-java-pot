@@ -91,13 +91,14 @@ public class UploadObjectFromInstance {
 
         UploadManager uploadManager = new UploadManager(client, uploadConfiguration);
 
-        // create log file and upload to object storage
+        //create log file and upload to object storage
         String logRecord = dateFormatter.format(cal.getTime()) + "-" + timeFormatter.format(cal.getTime());
         File logFile = new File("./logs/" + logRecord + ".log");
         FileUtils.writeStringToFile(logFile, cal.toString(), Charset.defaultCharset());
         String logName = objectNamePrefix + "log/" + logRecord;
         UploadRequest uploadLogDetails = createUploadRequest(bucketName, namespaceName, logName, logFile);
-        uploadObject(uploadManager, uploadLogDetails);
+        Long logFileConsumeTime = uploadObject(uploadManager, uploadLogDetails);
+        System.out.println("logFileConsumeTime: " + logFileConsumeTime + " ms");
 
         // Create thread pool
         int threadNumber = 100;
@@ -157,11 +158,11 @@ public class UploadObjectFromInstance {
             cTimeList.add(cTime);
         };
 
-        System.out.println("Submitted " + filesInBatch + " files with " + threadNumber + " threads.");
+        System.out.println("Submitted " + filesInBatch + " files with " + threadNumber + " threads");
         // close thread pool
         fixedPool.shutdown();
         fixedPool.awaitTermination(60, TimeUnit.SECONDS);
-        System.out.println("Total upload consume: " + stopWatchTotal.getTime(TimeUnit.MILLISECONDS) + " ms.");
+        System.out.println("Total upload consume: " + stopWatchTotal.getTime(TimeUnit.MILLISECONDS) + " ms");
         stopWatchTotal.stop();
 
         // statistics
@@ -174,9 +175,9 @@ public class UploadObjectFromInstance {
         }).collect(Collectors.toList());
         LongSummaryStatistics stats = cTimeListLong.stream().mapToLong(x -> x).summaryStatistics();
         System.out.println("Number of object uploaded: " + stats.getCount());
-        System.out.println("Average consume time: " + stats.getAverage());
-        System.out.println("Max consume time: " + stats.getMax());
-        System.out.println("Min consume time: " + stats.getMin());
+        System.out.println("Average consume time: " + stats.getAverage() + " ms");
+        System.out.println("Max consume time: " + stats.getMax() + " ms");
+        System.out.println("Min consume time: " + stats.getMin() + " ms");
 
     }
 
