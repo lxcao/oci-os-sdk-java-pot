@@ -100,18 +100,20 @@ public class UploadObjectFromInstance {
         uploadObject(uploadManager, uploadLogDetails);
 
         // Create thread pool
-        ExecutorService fixedPool = Executors.newFixedThreadPool(100);
+        int threadNumber = 100;
+        ExecutorService fixedPool = Executors.newFixedThreadPool(threadNumber);
 
         StopWatch stopWatchTotal = new StopWatch();
         stopWatchTotal.start();
         // multi file prepare
         // File sourceFile = new File("./assets/currybeef.mp4");
 
-        //static list
+        // static list
         List<Future<Long>> cTimeList = Collections.synchronizedList(new ArrayList<Future<Long>>());
 
         // batch for 160 files
-        for (int i = 0; i < 160; i++) {
+        int filesInBatch = 160;
+        for (int i = 0; i < filesInBatch; i++) {
             // multi file prepare
             // File destinationFile = new File("./assets/currybeef-"+i+".mp4");
             // FileUtils.copyFile(sourceFile, destinationFile);
@@ -150,20 +152,19 @@ public class UploadObjectFromInstance {
                 return uploadObject(uploadManager, uploadDetails);
             };
             Future<Long> cTime = fixedPool.submit(callableTask);
-
-            System.out.println(i + " sumitted");
-            //add consume time into list
+    
+            // add consume time into list
             cTimeList.add(cTime);
-        }
-        ;
+        };
 
+        System.out.println("Submitted " + filesInBatch + " files with " + threadNumber + " threads.");
         // close thread pool
         fixedPool.shutdown();
         fixedPool.awaitTermination(60, TimeUnit.SECONDS);
         System.out.println("Total upload consume: " + stopWatchTotal.getTime(TimeUnit.MILLISECONDS) + " ms.");
         stopWatchTotal.stop();
 
-        //statistics
+        // statistics
         List<Long> cTimeListLong = cTimeList.stream().map(x -> {
             try {
                 return x.get();
@@ -172,7 +173,7 @@ public class UploadObjectFromInstance {
             }
         }).collect(Collectors.toList());
         LongSummaryStatistics stats = cTimeListLong.stream().mapToLong(x -> x).summaryStatistics();
-        System.out.println("number of object uploaded: " + stats.getCount());
+        System.out.println("Number of object uploaded: " + stats.getCount());
         System.out.println("Average consume time: " + stats.getAverage());
         System.out.println("Max consume time: " + stats.getMax());
         System.out.println("Min consume time: " + stats.getMin());
@@ -188,10 +189,9 @@ public class UploadObjectFromInstance {
         // upload request and print result
         UploadResponse uploadResponse = uploadManager.upload(uploadDetails);
         Long consumeTime = stopWatch.getTime(TimeUnit.MILLISECONDS);
-        System.out.println("upload consume: " + consumeTime + " ms.");
-        System.out.println(Thread.currentThread().getName() + " : etag : " + uploadResponse.getETag());
-
-        stopWatch.stop();
+        // System.out.println("upload consume: " + consumeTime + " ms.");
+        // System.out.println(Thread.currentThread().getName() + " : etag : " +
+        // uploadResponse.getETag());
 
         return consumeTime;
     }
