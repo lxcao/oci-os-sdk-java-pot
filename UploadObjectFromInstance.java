@@ -172,6 +172,9 @@ public class UploadObjectFromInstance {
         System.out.println("Max upload consume time: " + stats.getMax() + " ms");
         System.out.println("Min upload consume time: " + stats.getMin() + " ms");
 
+        //finish
+        client.close();
+
     }
 
     // method to invoke upload object
