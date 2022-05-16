@@ -1,5 +1,4 @@
 import java.io.File;
-import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -23,21 +22,14 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.io.FileUtils;
 
-import com.oracle.bmc.ConfigFileReader;
 import com.oracle.bmc.Region;
-import com.oracle.bmc.auth.AuthenticationDetailsProvider;
-import com.oracle.bmc.auth.ConfigFileAuthenticationDetailsProvider;
 import com.oracle.bmc.objectstorage.ObjectStorage;
 import com.oracle.bmc.objectstorage.ObjectStorageClient;
-import com.oracle.bmc.objectstorage.requests.GetObjectRequest;
 import com.oracle.bmc.objectstorage.requests.PutObjectRequest;
-import com.oracle.bmc.objectstorage.responses.GetObjectResponse;
 import com.oracle.bmc.objectstorage.transfer.UploadConfiguration;
 import com.oracle.bmc.objectstorage.transfer.UploadManager;
 import com.oracle.bmc.objectstorage.transfer.UploadManager.UploadRequest;
-import com.oracle.bmc.objectstorage.transfer.UploadManager.UploadResponse;
 import com.oracle.bmc.auth.InstancePrincipalsAuthenticationDetailsProvider;
-import com.oracle.bmc.util.StreamUtils;
 
 public class UploadObjectFromInstance {
 
@@ -91,7 +83,7 @@ public class UploadObjectFromInstance {
 
         UploadManager uploadManager = new UploadManager(client, uploadConfiguration);
 
-        //create log file and upload to object storage
+        // create log file and upload to object storage
         String logRecord = dateFormatter.format(cal.getTime()) + "-" + timeFormatter.format(cal.getTime());
         File logFile = new File("./logs/" + logRecord + ".log");
         FileUtils.writeStringToFile(logFile, cal.toString(), Charset.defaultCharset());
@@ -153,12 +145,13 @@ public class UploadObjectFromInstance {
                 return uploadObject(uploadManager, uploadDetails);
             };
             Future<Long> cTime = fixedPool.submit(callableTask);
-    
+
             // add consume time into list
             cTimeList.add(cTime);
-        };
+        }
+        ;
 
-        System.out.println("Submitted " + filesInBatch + " files with " + threadNumber + " threads");
+        System.out.println("Uploading " + filesInBatch + " files with " + threadNumber + " threads");
         // close thread pool
         fixedPool.shutdown();
         fixedPool.awaitTermination(60, TimeUnit.SECONDS);
@@ -175,9 +168,9 @@ public class UploadObjectFromInstance {
         }).collect(Collectors.toList());
         LongSummaryStatistics stats = cTimeListLong.stream().mapToLong(x -> x).summaryStatistics();
         System.out.println("Number of object uploaded: " + stats.getCount());
-        System.out.println("Average consume time: " + stats.getAverage() + " ms");
-        System.out.println("Max consume time: " + stats.getMax() + " ms");
-        System.out.println("Min consume time: " + stats.getMin() + " ms");
+        System.out.println("Average upload consume time: " + stats.getAverage() + " ms");
+        System.out.println("Max upload consume time: " + stats.getMax() + " ms");
+        System.out.println("Min upload consume time: " + stats.getMin() + " ms");
 
     }
 
@@ -188,7 +181,8 @@ public class UploadObjectFromInstance {
 
         stopWatch.start();
         // upload request and print result
-        UploadResponse uploadResponse = uploadManager.upload(uploadDetails);
+        // UploadResponse uploadResponse = uploadManager.upload(uploadDetails);
+        uploadManager.upload(uploadDetails);
         Long consumeTime = stopWatch.getTime(TimeUnit.MILLISECONDS);
         // System.out.println("upload consume: " + consumeTime + " ms.");
         // System.out.println(Thread.currentThread().getName() + " : etag : " +

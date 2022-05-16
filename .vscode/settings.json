@@ -1,0 +1,9 @@
+{
+    "java.project.referencedLibraries": [
+        "lib/**/*.jar",
+        "/Users/caolingxin/Documents/workspaces/oci-projects/oci-java-sdk-2.25.0-individual-modules/third-party/lib/commons-lang3-3.8.1.jar",
+        "/Users/caolingxin/Documents/workspaces/oci-projects/oci-java-sdk-2.25.0-individual-modules/third-party/lib/commons-io-2.8.0.jar",
+        "/Users/caolingxin/Documents/workspaces/oci-projects/oci-java-sdk-2.25.0-individual-modules/lib/oci-java-sdk-full-2.25.0.jar"
+    ],
+    "java.dependency.packagePresentation": "hierarchical"
+}
