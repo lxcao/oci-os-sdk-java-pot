@@ -5,9 +5,16 @@ import java.net.ConnectException;
 import java.net.SocketTimeoutException;
 import java.nio.charset.Charset;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.List;
+import java.util.LongSummaryStatistics;
 import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -117,8 +124,9 @@ public class DownloadObjectToInstance {
         int totalObjectsNumber = objectsSummaryList.size();
         System.out.println("The number of objects in " + bucketName + ": " + totalObjectsNumber);
 
-        // prepare 88 files to be downloaded
-        List<String> objectsNameList = objectsSummaryList.subList(0, 88)
+        // prepare files to be downloaded
+        int filesInBatch = 88;
+        List<String> objectsNameList = objectsSummaryList.subList(0, filesInBatch)
                 .stream().map(x -> x.getName()).collect(Collectors.toList());
         System.out.println("The number of objects to be downloaded: " + objectsNameList.size());
 
@@ -132,6 +140,55 @@ public class DownloadObjectToInstance {
         // download ONE file
         Long downloadConsumeTime = downloadObject(client, getObjectRequest);
         System.out.println("Download ONE file consume time: " + downloadConsumeTime + " ms");
+
+        // Create thread pool
+        int threadNumber = 100;
+        ExecutorService fixedPool = Executors.newFixedThreadPool(threadNumber);
+
+        StopWatch stopWatchTotal = new StopWatch();
+        stopWatchTotal.start();
+
+        // static list
+        List<Future<Long>> cTimeList = Collections.synchronizedList(new ArrayList<Future<Long>>());
+
+        // batch for files
+        for (int i = 0; i < filesInBatch; i++) {
+            // create request from object List
+            GetObjectRequest getBatchObjectRequest = GetObjectRequest.builder()
+                    .namespaceName(namespaceName)
+                    .bucketName(bucketName)
+                    .objectName(objectsNameList.get(i))
+                    .build();
+            // launch thread with consume time
+            Callable<Long> callableTask = () -> {
+                return downloadObject(client, getBatchObjectRequest);
+            };
+            Future<Long> cTime = fixedPool.submit(callableTask);
+
+            // add consume time into list
+            cTimeList.add(cTime);
+        }
+
+        System.out.println("Downloading " + filesInBatch + " files with " + threadNumber + " threads");
+        // close thread pool
+        fixedPool.shutdown();
+        fixedPool.awaitTermination(60, TimeUnit.SECONDS);
+        System.out.println("Total download consume: " + stopWatchTotal.getTime(TimeUnit.MILLISECONDS) + " ms");
+        stopWatchTotal.stop();
+
+        // statistics
+        List<Long> cTimeListLong = cTimeList.stream().map(x -> {
+            try {
+                return x.get();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }).collect(Collectors.toList());
+        LongSummaryStatistics stats = cTimeListLong.stream().mapToLong(x -> x).summaryStatistics();
+        System.out.println("Number of object downloaded: " + stats.getCount());
+        System.out.println("Average download consume time: " + stats.getAverage() + " ms");
+        System.out.println("Max download consume time: " + stats.getMax() + " ms");
+        System.out.println("Min download consume time: " + stats.getMin() + " ms");
 
         client.close();
     }
