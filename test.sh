@@ -31,3 +31,6 @@ java -cp .:$OCI_JAVA_SDK_FULL_JAR_LOCATION:$OCI_JAVA_SDK_LOCATION/third-party/li
 scp -i ../credentials/ssh-key-oci-linux-cloud-dev.key UploadObjectFromInstance.java  opc@138.2.76.103:/home/opc/workspaces/oci-pot/
 javac -cp .:$OCI_JAVA_SDK_FULL_JAR_LOCATION:$OCI_JAVA_SDK_LOCATION/third-party/lib/* UploadObjectFromInstance.java
 java -cp .:$OCI_JAVA_SDK_FULL_JAR_LOCATION:$OCI_JAVA_SDK_LOCATION/third-party/lib/* UploadObjectFromInstance ./assets/currybeef.mp4
+
+# sse-c upload by sdk, download by cli, you have to supply the optional parameter --encryption-key-file
+oci os object get -ns ocichina001 -bn bucket-20220501-1555 --name currybeefmovie202206031033 --file a.mp4 --encryption-key-file ./sse-c.key --profile specialist2 --auth security_token
