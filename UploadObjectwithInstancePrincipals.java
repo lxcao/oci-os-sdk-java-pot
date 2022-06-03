@@ -1,13 +1,13 @@
 import java.io.File;
 import java.io.InputStream;
 import java.util.Map;
+
+
+
 import java.net.ConnectException;
 import java.net.SocketTimeoutException;
 
-import com.oracle.bmc.ConfigFileReader;
 import com.oracle.bmc.Region;
-import com.oracle.bmc.auth.AuthenticationDetailsProvider;
-import com.oracle.bmc.auth.ConfigFileAuthenticationDetailsProvider;
 import com.oracle.bmc.objectstorage.ObjectStorage;
 import com.oracle.bmc.objectstorage.ObjectStorageClient;
 import com.oracle.bmc.objectstorage.requests.GetObjectRequest;
