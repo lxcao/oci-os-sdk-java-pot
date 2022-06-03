@@ -38,7 +38,11 @@ public class UploadObjectwithSSEC {
         String contentType = null;
         String contentEncoding = null;
         String contentLanguage = null;
+        String encryptionAlgorithm = "AES256";
+        String encryptionKey = createAES256Key();
+        String encrpytionSha = createAES256KeySha256Hex(encryptionKey);
         File body = new File(args[1]);
+        
 
         final ConfigFileReader.ConfigFile configFile = ConfigFileReader.parse(configurationFilePath, profile);
 
@@ -63,6 +67,9 @@ public class UploadObjectwithSSEC {
                 .contentLanguage(contentLanguage)
                 .contentEncoding(contentEncoding)
                 .opcMeta(metadata)
+                .opcSseCustomerAlgorithm(encryptionAlgorithm)
+                .opcSseCustomerKey(encryptionKey)
+                .opcSseCustomerKeySha256(encrpytionSha)
                 .build();
 
         UploadRequest uploadDetails = UploadRequest.builder(body).allowOverwrite(true).build(request);
@@ -86,7 +93,7 @@ public class UploadObjectwithSSEC {
             return Base64.encodeBase64String(b);
         } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
-            throw new RuntimeException("没有此算法");
+            throw new RuntimeException("no such algorithm");
         }
     }
 
