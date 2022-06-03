@@ -12,12 +12,12 @@ import com.oracle.bmc.objectstorage.transfer.UploadManager.UploadResponse;
 
 import java.io.File;
 import java.security.NoSuchAlgorithmException;
+import java.util.Base64;
 import java.util.Map;
 
 import javax.crypto.KeyGenerator;
-import javax.crypto.SecretKey;
 
-import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.digest.DigestUtils;
 
 public class UploadObjectwithSSEC {
@@ -39,8 +39,11 @@ public class UploadObjectwithSSEC {
         String contentEncoding = null;
         String contentLanguage = null;
         String encryptionAlgorithm = "AES256";
-        String encryptionKey = createAES256Key();
-        String encrpytionSha = createAES256KeySha256Hex(encryptionKey);
+        byte[] encryptionKey = createAES256Key();
+        String base64EncryptionKey = createBase64EncodedString(encryptionKey);
+        String base64EncrpytionSha = createBase64EncodedString(createSHA256Hash(encryptionKey));
+        System.out.println("base64EncrpytionKey: " + base64EncryptionKey);
+        System.out.println("base64EncrpytionSha: " + base64EncrpytionSha);
         File body = new File(args[1]);
         
 
@@ -68,8 +71,8 @@ public class UploadObjectwithSSEC {
                 .contentEncoding(contentEncoding)
                 .opcMeta(metadata)
                 .opcSseCustomerAlgorithm(encryptionAlgorithm)
-                .opcSseCustomerKey(encryptionKey)
-                .opcSseCustomerKeySha256(encrpytionSha)
+                .opcSseCustomerKey(base64EncryptionKey)
+                .opcSseCustomerKeySha256(base64EncrpytionSha)
                 .build();
 
         UploadRequest uploadDetails = UploadRequest.builder(body).allowOverwrite(true).build(request);
@@ -83,22 +86,21 @@ public class UploadObjectwithSSEC {
     }
 
     // method to create AES256 key
-    private static String createAES256Key() {
-        try {
-            KeyGenerator kg = KeyGenerator.getInstance("AES");
-            // AES 256
-            kg.init(256);
-            SecretKey sk = kg.generateKey();
-            byte[] b = sk.getEncoded();
-            return Base64.encodeBase64String(b);
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-            throw new RuntimeException("no such algorithm");
-        }
+    private static byte[] createAES256Key() throws NoSuchAlgorithmException {
+        KeyGenerator keyGenerator = KeyGenerator.getInstance("AES");
+        keyGenerator.init(256);
+        return keyGenerator.generateKey().getEncoded();
     }
 
-    // method to create AES256KeySHA256Hex
-    private static String createAES256KeySha256Hex(String secret) {
-        return DigestUtils.sha256Hex(secret).toUpperCase();
+    // method to convert to Base64 encoded string
+    private static String createBase64EncodedString(byte[] content) {
+            //return Base64.encodeBase64String(b);
+            return Base64.getEncoder().encodeToString(content);
+    }
+
+    // method to create SHA256 Hash
+    private static byte[] createSHA256Hash(byte[] secret) throws DecoderException {
+        //return DigestUtils.sha256Hex(secret);
+        return DigestUtils.sha256(secret);
     }
 }
