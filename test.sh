@@ -32,5 +32,12 @@ scp -i ../credentials/ssh-key-oci-linux-cloud-dev.key UploadObjectFromInstance.j
 javac -cp .:$OCI_JAVA_SDK_FULL_JAR_LOCATION:$OCI_JAVA_SDK_LOCATION/third-party/lib/* UploadObjectFromInstance.java
 java -cp .:$OCI_JAVA_SDK_FULL_JAR_LOCATION:$OCI_JAVA_SDK_LOCATION/third-party/lib/* UploadObjectFromInstance ./assets/currybeef.mp4
 
-# sse-c upload by sdk, download by cli, you have to supply the optional parameter --encryption-key-file
+# sse-c upload by sdk, 
+# download by cli, you have to supply the optional parameter --encryption-key-file
+# download by par, The correct SSE-C headers must be provided to retrieve the object.
 oci os object get -ns ocichina001 -bn bucket-20220501-1555 --name currybeefmovie202206031033 --file a.mp4 --encryption-key-file ./sse-c.key --profile specialist2 --auth security_token
+
+# sse-v upload by sdk
+# download by cli, 
+# download by par, 
+oci os object get -ns ocichina001 -bn bucket-20220501-1555 --name currybeefmovie202206031253 --file d.mp4 --profile specialist2 --auth security_token
