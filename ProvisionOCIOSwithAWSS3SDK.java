@@ -13,6 +13,7 @@ import com.amazonaws.client.builder.AwsClientBuilder;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.Bucket;
+import com.amazonaws.services.s3.model.DeleteObjectsRequest;
 import com.amazonaws.services.s3.model.ListObjectsV2Result;
 import com.amazonaws.services.s3.model.ObjectListing;
 import com.amazonaws.services.s3.model.ObjectMetadata;
@@ -49,19 +50,16 @@ public class ProvisionOCIOSwithAWSS3SDK {
         String key_name = Paths.get(file_path).getFileName().toString() + UUID.randomUUID();
 
         System.out.format("Uploading %s to OCI bucket %s...\n", key_name, bucket_name);
-        try {
-            s3Client.putObject(bucket_name, key_name, new File(file_path));
-        } catch (AmazonServiceException e) {
-            System.err.println(e.getErrorMessage());
-            System.exit(1);
-        }
+        s3Client.putObject(bucket_name, key_name, new File(file_path));
         System.out.println("Done!");
 
         System.out.println("****************************listObjects****************************");
         ObjectListing result = s3Client.listObjects(bucket_name);
         List<S3ObjectSummary> objects = result.getObjectSummaries();
+        String[] object_keys = new String[objects.size()];
         for (S3ObjectSummary os : objects) {
             System.out.println("* " + os.getKey());
+            object_keys[objects.indexOf(os)] = os.getKey();
         }
 
         System.out.println("****************************listObjectsV2****************************");
@@ -69,41 +67,53 @@ public class ProvisionOCIOSwithAWSS3SDK {
         List<S3ObjectSummary> objectsv2 = resultv2.getObjectSummaries();
         for (S3ObjectSummary os : objectsv2) {
             System.out.println("* " + os.getKey());
+        }
 
         System.out.println("****************************getObject****************************");
-        System.out.format("Downloading %s from S3 bucket %s...\n", key_name, bucket_name);
-        try {
-            S3Object o = s3Client.getObject(bucket_name, key_name);
-            S3ObjectInputStream s3is = o.getObjectContent();
-                FileOutputStream fos = new FileOutputStream(new File(key_name));
-                byte[] read_buf = new byte[1024];
-                int read_len = 0;
-                while ((read_len = s3is.read(read_buf)) > 0) {
-                    fos.write(read_buf, 0, read_len);
-                }
-                s3is.close();
-                fos.close();
-            } catch (AmazonServiceException e) {
-                System.err.println(e.getErrorMessage());
-                System.exit(1);
-            } catch (FileNotFoundException e) {
-                System.err.println(e.getMessage());
-                System.exit(1);
-            } catch (IOException e) {
-                System.err.println(e.getMessage());
-                System.exit(1);
-            }
-            System.out.println("Done!");
+        System.out.format("Downloading %s from OCI bucket %s...\n", key_name, bucket_name);
+        S3Object o = s3Client.getObject(bucket_name, key_name);
+        S3ObjectInputStream s3is = o.getObjectContent();
+        FileOutputStream fos = new FileOutputStream(new File(key_name));
+        byte[] read_buf = new byte[1024];
+        int read_len = 0;
+        while ((read_len = s3is.read(read_buf)) > 0) {
+            fos.write(read_buf, 0, read_len);
         }
+        s3is.close();
+        fos.close();
+        System.out.println("Done!");
 
         System.out.println("****************************getObjectAsString****************************");
         String oString = s3Client.getObjectAsString(bucket_name, key_name);
-        System.out.format("length of downloaded object is %s\n",oString.length());
+        System.out.format("length of downloaded object is %s\n", oString.length());
         System.out.println("Done!");
 
         System.out.println("****************************getObjectMetadata****************************");
         ObjectMetadata oMetadata = s3Client.getObjectMetadata(bucket_name, key_name);
-        System.out.format("length of Content is %s\n",oMetadata.getContentLength());
+        System.out.format("length of Content is %s\n", oMetadata.getContentLength());
         System.out.println("Done!");
+
+        System.out.println("****************************copyObject****************************");
+        String to_bucket = "bucket-20220720";
+        System.out.format("Copying object %s from bucket %s to %s\n",
+                key_name, bucket_name, to_bucket);
+        s3Client.copyObject(bucket_name, key_name, to_bucket, key_name);
+        System.out.println("Done!");
+
+        System.out.println("****************************deleteObject****************************");
+        System.out.format("Deleting object %s from OCI bucket: %s\n", key_name, to_bucket);
+        s3Client.deleteObject(bucket_name, key_name);
+        System.out.println("Done!");
+
+
+        
+
+        System.out.println("****************************deleteObjects****************************");
+        System.out.println("Deleting objects from OCI bucket: " + bucket_name);
+        for (String k : object_keys) {
+            System.out.println(" * " + k);
+        }
+        DeleteObjectsRequest dor = new DeleteObjectsRequest(bucket_name).withKeys(object_keys);
+        s3Client.deleteObjects(dor);
     }
 }
