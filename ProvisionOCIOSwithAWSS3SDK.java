@@ -1,19 +1,17 @@
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.IOException;
+import java.net.URL;
 import java.nio.file.Paths;
+import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
-import com.amazonaws.AmazonServiceException;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.client.builder.AwsClientBuilder;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.Bucket;
-import com.amazonaws.services.s3.model.DeleteObjectsRequest;
 import com.amazonaws.services.s3.model.ListObjectsV2Result;
 import com.amazonaws.services.s3.model.ObjectListing;
 import com.amazonaws.services.s3.model.ObjectMetadata;
@@ -45,6 +43,7 @@ public class ProvisionOCIOSwithAWSS3SDK {
         for (Bucket b : buckets) {
             System.out.println("* " + b.getName());
         }
+        System.out.println("Done!");
 
         System.out.println("****************************putObject****************************");
         String file_path = "/Users/caolingxin/Documents/workspaces/oci-projects/oci-os-s3-compatibility/assets/wholesale-trade-survey-mar-2022-quarter-csv.csv";
@@ -63,6 +62,7 @@ public class ProvisionOCIOSwithAWSS3SDK {
             System.out.println("* " + os.getKey());
             object_keys[objects.indexOf(os)] = os.getKey();
         }
+        System.out.println("Done!");
 
         System.out.println("****************************listObjectsV2****************************");
         ListObjectsV2Result resultv2 = s3Client.listObjectsV2(bucket_name);
@@ -70,6 +70,7 @@ public class ProvisionOCIOSwithAWSS3SDK {
         for (S3ObjectSummary os : objectsv2) {
             System.out.println("* " + os.getKey());
         }
+        System.out.println("Done!");
 
         System.out.println("****************************getObject****************************");
         System.out.format("Downloading %s from OCI bucket %s...\n", key_name, bucket_name);
@@ -104,7 +105,7 @@ public class ProvisionOCIOSwithAWSS3SDK {
 
         System.out.println("****************************deleteObject****************************");
         System.out.format("Deleting object %s from OCI bucket: %s\n", key_name, to_bucket);
-        s3Client.deleteObject(bucket_name, key_name);
+        s3Client.deleteObject(to_bucket, key_name);
         System.out.println("Done!");
 
         System.out.println("****************************listVersions****************************");
@@ -113,6 +114,7 @@ public class ProvisionOCIOSwithAWSS3SDK {
         for (S3VersionSummary vs : versions_list) {
             System.out.println("* " + vs.getKey() + " " + vs.getVersionId());
         }
+        System.out.println("Done!");
 
         System.out.println("****************************listNextBatchOfVersions****************************");
         VersionListing versions_next = s3Client.listNextBatchOfVersions(versions);
@@ -120,6 +122,13 @@ public class ProvisionOCIOSwithAWSS3SDK {
         for (S3VersionSummary vs : versions_list_next) {
             System.out.println("* " + vs.getKey() + " " + vs.getVersionId());
         }
+        System.out.println("Done!");
+
+        System.out.println("****************************generatePresignedUrl****************************");
+        URL url = s3Client.generatePresignedUrl(bucket_name, key_name,
+                new Date(System.currentTimeMillis() + 1000 * 60 * 60));
+        System.out.println("The URL is: " + url.toString());
+        System.out.println("Done!");
 
         // System.out.println("****************************deleteObjects****************************");
         // System.out.println("Deleting objects from OCI bucket: " + bucket_name);

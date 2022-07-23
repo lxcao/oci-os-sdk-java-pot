@@ -41,3 +41,7 @@ oci os object get -ns ocichina001 -bn bucket-20220501-1555 --name currybeefmovie
 # download by cli, 
 # download by par, 
 oci os object get -ns ocichina001 -bn bucket-20220501-1555 --name currybeefmovie202206031253 --file d.mp4 --profile specialist2 --auth security_token
+
+#aws s3 sdk mapping oci os
+javac -cp /Users/caolingxin/Documents/workspaces/aws-projects/aws-java-sdk-1.12.267/lib/aws-java-sdk-1.12.267.jar:/Users/caolingxin/Documents/workspaces/aws-projects/aws-java-sdk-1.12.267/third-party/lib/\* ProvisionOCIOSwithAWSS3SDK.java
+java -cp .:/Users/caolingxin/Documents/workspaces/aws-projects/aws-java-sdk-1.12.267/lib/aws-java-sdk-1.12.267.jar:/Users/caolingxin/Documents/workspaces/aws-projects/aws-java-sdk-1.12.267/third-party/lib/\* ProvisionOCIOSwithAWSS3SDK
