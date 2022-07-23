@@ -20,6 +20,8 @@ import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.S3Object;
 import com.amazonaws.services.s3.model.S3ObjectInputStream;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
+import com.amazonaws.services.s3.model.S3VersionSummary;
+import com.amazonaws.services.s3.model.VersionListing;
 
 public class ProvisionOCIOSwithAWSS3SDK {
     public static void main(String[] args) throws Exception {
@@ -105,15 +107,26 @@ public class ProvisionOCIOSwithAWSS3SDK {
         s3Client.deleteObject(bucket_name, key_name);
         System.out.println("Done!");
 
-
-        
-
-        System.out.println("****************************deleteObjects****************************");
-        System.out.println("Deleting objects from OCI bucket: " + bucket_name);
-        for (String k : object_keys) {
-            System.out.println(" * " + k);
+        System.out.println("****************************listVersions****************************");
+        VersionListing versions = s3Client.listVersions(bucket_name,"wholesale-trade-survey-mar-2022-quarter-csv");
+        List<S3VersionSummary> versions_list = versions.getVersionSummaries();
+        for (S3VersionSummary vs : versions_list) {
+            System.out.println("* " + vs.getKey() + " " + vs.getVersionId());
         }
-        DeleteObjectsRequest dor = new DeleteObjectsRequest(bucket_name).withKeys(object_keys);
-        s3Client.deleteObjects(dor);
+
+        System.out.println("****************************listNextBatchOfVersions****************************");
+        VersionListing versions_next = s3Client.listNextBatchOfVersions(versions);
+        List<S3VersionSummary> versions_list_next = versions_next.getVersionSummaries();
+        for (S3VersionSummary vs : versions_list_next) {
+            System.out.println("* " + vs.getKey() + " " + vs.getVersionId());
+        }
+
+        // System.out.println("****************************deleteObjects****************************");
+        // System.out.println("Deleting objects from OCI bucket: " + bucket_name);
+        // for (String k : object_keys) {
+        //     System.out.println(" * " + k);
+        // }
+        // DeleteObjectsRequest dor = new DeleteObjectsRequest(bucket_name).withKeys(object_keys);
+        // s3Client.deleteObjects(dor);
     }
 }
