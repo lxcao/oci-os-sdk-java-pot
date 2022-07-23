@@ -4,7 +4,9 @@
         "/Users/caolingxin/Documents/workspaces/oci-projects/oci-java-sdk-2.25.0-individual-modules/third-party/lib/commons-lang3-3.8.1.jar",
         "/Users/caolingxin/Documents/workspaces/oci-projects/oci-java-sdk-2.25.0-individual-modules/third-party/lib/commons-io-2.8.0.jar",
         "/Users/caolingxin/Documents/workspaces/oci-projects/oci-java-sdk-2.25.0-individual-modules/lib/oci-java-sdk-full-2.25.0.jar",
-        "/Users/caolingxin/Documents/workspaces/oci-projects/oci-java-sdk-2.25.0-individual-modules/third-party/lib/commons-codec-1.15.jar"
+        "/Users/caolingxin/Documents/workspaces/oci-projects/oci-java-sdk-2.25.0-individual-modules/third-party/lib/commons-codec-1.15.jar",
+        "/Users/caolingxin/Documents/workspaces/aws-projects/aws-java-sdk-1.12.267/lib/aws-java-sdk-1.12.267.jar"
     ],
-    "java.dependency.packagePresentation": "hierarchical"
+    "java.dependency.packagePresentation": "hierarchical",
+    "java.jdt.ls.vmargs": "-XX:+UseParallelGC -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90 -Dsun.zip.disableMemoryMapping=true -Xmx2G -Xms100m"
 }
